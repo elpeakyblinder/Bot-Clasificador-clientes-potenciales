@@ -1,23 +1,84 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
+		<title>Lead Qualifier AI | Dashboard Premium</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 	</head>
 	<body>
 		<slot />
 	</body>
 </html>
 
-<style>
+<style is:global>
+	:root {
+		--bg-dark: #121318;
+		--bg-card: #121318;
+		--border-color: rgba(255, 255, 255, 0.02);
+		--text-primary: #f4f4f5;
+		--text-secondary: #71717a;
+		--primary: #8b5cf6;
+		--primary-hover: #7c3aed;
+		--accent: #06b6d4;
+		--success: #10b981;
+		--success-bg: rgba(16, 185, 129, 0.05);
+		--danger: #ef4444;
+		--danger-bg: rgba(239, 68, 68, 0.05);
+		--font-title: 'Outfit', 'Inter', sans-serif;
+		--font-body: 'Inter', sans-serif;
+	}
+
+	* {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+
 	html,
 	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
+		background-color: var(--bg-dark);
+		color: var(--text-primary);
+		font-family: var(--font-body);
+		min-height: 100vh;
+		overflow-x: hidden;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+	}
+	::-webkit-scrollbar-track {
+		background: #0d0e12;
+	}
+	::-webkit-scrollbar-thumb {
+		background: #20222a;
+		border-radius: 4px;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: #2d303b;
+	}
+
+	.neumorphic-flat {
+		background: var(--bg-card);
+		border-radius: 20px;
+		border: 1px solid rgba(255, 255, 255, 0.015);
+		box-shadow: 
+			8px 8px 20px rgba(0, 0, 0, 0.65), 
+			-8px -8px 20px rgba(255, 255, 255, 0.025);
+		transition: all 0.3s ease;
+	}
+
+	.neumorphic-inset {
+		background: var(--bg-card);
+		border-radius: 20px;
+		border: 1px solid rgba(0, 0, 0, 0.15);
+		box-shadow: 
+			inset 4px 4px 10px rgba(0, 0, 0, 0.75), 
+			inset -4px -4px 10px rgba(255, 255, 255, 0.02);
+		transition: all 0.3s ease;
 	}
 </style>

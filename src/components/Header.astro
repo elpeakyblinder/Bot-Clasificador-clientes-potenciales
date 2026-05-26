@@ -1,0 +1,103 @@
+---
+---
+
+<header class="main-header">
+  <div class="logo-area">
+    <div class="logo-icon neumorphic-flat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="ai-spark"><path d="M12 3v18"/><path d="M3 12h18"/><path d="m18 6-6 6-6-6"/><path d="m18 18-6-6-6 6"/></svg>
+    </div>
+    <div class="logo-text">
+      <h1>Orbyn Lead AI</h1>
+      <span>Agente Cualificador de Leads en Producción</span>
+    </div>
+  </div>
+  <div class="bot-status neumorphic-flat">
+    <span class="pulse-indicator"></span>
+    <span class="status-label">Telegram Bot Activo</span>
+  </div>
+</header>
+
+<style>
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.01);
+  }
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .logo-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    background: var(--bg-card);
+    box-shadow: 
+      6px 6px 14px rgba(0, 0, 0, 0.65), 
+      -6px -6px 14px rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.015);
+  }
+  .ai-spark {
+    filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.6));
+  }
+  .logo-text h1 {
+    font-family: var(--font-title);
+    font-size: 1.7rem;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    background: linear-gradient(to right, #ffffff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo-text span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .bot-status {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: var(--bg-card);
+    padding: 0.65rem 1.3rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--success);
+    box-shadow: 
+      6px 6px 14px rgba(0, 0, 0, 0.65), 
+      -6px -6px 14px rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.015);
+  }
+  .pulse-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 1.8s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+  }
+</style>

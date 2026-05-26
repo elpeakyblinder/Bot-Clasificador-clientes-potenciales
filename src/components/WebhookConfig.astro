@@ -1,0 +1,218 @@
+---
+---
+
+<section class="webhook-section glassmorphic">
+  <div class="section-header">
+    <h2>Webhook de Telegram</h2>
+    <p>Registra la URL de tu servidor en Telegram para activar el bot de forma automática e interactiva.</p>
+  </div>
+
+  <form id="webhook-form" class="webhook-form">
+    <div class="input-wrapper">
+      <label for="webhook-url">URL Pública del Webhook</label>
+      <input 
+        type="url" 
+        id="webhook-url" 
+        placeholder="https://tu-dominio.cloudflare.dev" 
+        required
+        class="glass-input-field"
+      />
+    </div>
+    <button type="submit" id="webhook-btn" class="glow-button secondary-glow">
+      <span>Activar Webhook del Bot</span>
+      <div class="spinner" id="webhook-spinner" style="display: none;"></div>
+    </button>
+  </form>
+
+  <div id="webhook-result" class="webhook-result" style="display: none;">
+    <p id="webhook-message">Configurando...</p>
+  </div>
+</section>
+
+<style>
+  .webhook-section {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .section-header h2 {
+    font-family: var(--font-title);
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem 0;
+  }
+  .section-header p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .webhook-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .input-wrapper label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .glass-input-field {
+    width: 100%;
+    background: rgba(9, 9, 11, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 0.85rem 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .glass-input-field:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
+  }
+  
+  .glow-button {
+    position: relative;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    padding: 1rem;
+    font-family: var(--font-title);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .glow-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(139, 92, 246, 0.5);
+  }
+  .secondary-glow {
+    background: linear-gradient(135deg, #10b981, #06b6d4) !important;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25) !important;
+  }
+  .secondary-glow:hover {
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.45) !important;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .webhook-result {
+    padding: 1rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    border-left: 4px solid var(--success);
+    animation: fadeIn 0.3s ease-out;
+  }
+  .webhook-result.error {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
+    color: #f87171;
+  }
+  .webhook-result.success {
+    border-left-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+    color: #34d399;
+  }
+  
+  #webhook-message {
+    margin: 0;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const webhookForm = document.getElementById('webhook-form') as HTMLFormElement;
+    const webhookUrlInput = document.getElementById('webhook-url') as HTMLInputElement;
+    const webhookBtn = document.getElementById('webhook-btn') as HTMLButtonElement;
+    const webhookSpinner = document.getElementById('webhook-spinner');
+    const webhookResult = document.getElementById('webhook-result');
+    const webhookMessage = document.getElementById('webhook-message');
+
+    if (webhookUrlInput) {
+      const suggestedUrl = window.location.origin + '/api/webhook';
+      webhookUrlInput.value = suggestedUrl;
+    }
+
+    if (webhookForm) {
+      webhookForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = webhookUrlInput.value.trim();
+        if (!url) return;
+
+        webhookBtn.disabled = true;
+        if (webhookSpinner) webhookSpinner.style.display = 'inline-block';
+        if (webhookResult) {
+          webhookResult.style.display = 'none';
+          webhookResult.className = 'webhook-result';
+        }
+
+        try {
+          const response = await fetch('/api/set-webhook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          });
+
+          const data = await response.json();
+
+          if (webhookResult && webhookMessage) {
+            if (response.ok && data.success) {
+              webhookResult.classList.add('success');
+              webhookMessage.innerHTML = `🟢 <b>¡Éxito!</b> ${data.message}`;
+            } else {
+              webhookResult.classList.add('error');
+              webhookMessage.innerHTML = `🔴 <b>Error:</b> ${data.error || 'No se pudo configurar el webhook.'}`;
+            }
+            webhookResult.style.display = 'block';
+          }
+        } catch (err) {
+          const error = err as Error;
+          console.error(error);
+          if (webhookResult && webhookMessage) {
+            webhookResult.classList.add('error');
+            webhookMessage.innerHTML = `🔴 <b>Error de red:</b> ${error.message}`;
+            webhookResult.style.display = 'block';
+          }
+        } finally {
+          webhookBtn.disabled = false;
+          if (webhookSpinner) webhookSpinner.style.display = 'none';
+        }
+      });
+    }
+  });
+</script>
