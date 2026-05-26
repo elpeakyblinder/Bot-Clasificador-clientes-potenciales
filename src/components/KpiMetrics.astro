@@ -1,0 +1,156 @@
+---
+interface Props {
+  totalLeads: number;
+  qualifiedLeads: number;
+  unqualifiedLeads: number;
+  conversionRate: number;
+}
+
+const { totalLeads, qualifiedLeads, unqualifiedLeads, conversionRate } = Astro.props;
+---
+
+<section class="kpi-grid">
+  <div class="kpi-card neumorphic-flat">
+    <div class="kpi-icon total-icon neumorphic-inset">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div class="kpi-data">
+      <h3>Total Leads</h3>
+      <span class="kpi-number" id="kpi-total">{totalLeads}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card neumorphic-flat">
+    <div class="kpi-icon qualified-icon neumorphic-inset">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <div class="kpi-data">
+      <h3>Cualificados</h3>
+      <span class="kpi-number text-success" id="kpi-qualified">{qualifiedLeads}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card neumorphic-flat">
+    <div class="kpi-icon unqualified-icon neumorphic-inset">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    </div>
+    <div class="kpi-data">
+      <h3>No Cualificados</h3>
+      <span class="kpi-number text-danger" id="kpi-unqualified">{unqualifiedLeads}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card neumorphic-flat">
+    <div class="kpi-icon conversion-icon neumorphic-inset">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+    </div>
+    <div class="kpi-data">
+      <h3>Tasa de Cualificación</h3>
+      <span class="kpi-number text-accent" id="kpi-rate">{conversionRate}%</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.75rem;
+  }
+  .kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.75rem;
+    cursor: default;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      12px 12px 24px rgba(0, 0, 0, 0.75), 
+      -10px -10px 24px rgba(255, 255, 255, 0.035);
+  }
+  .kpi-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .total-icon {
+    color: var(--primary);
+  }
+  .qualified-icon {
+    color: var(--success);
+  }
+  .unqualified-icon {
+    color: var(--danger);
+  }
+  .conversion-icon {
+    color: var(--accent);
+  }
+  .kpi-data h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    margin: 0;
+  }
+  .kpi-number {
+    font-family: var(--font-title);
+    font-size: 2.1rem;
+    font-weight: 800;
+    display: block;
+    margin-top: 0.25rem;
+  }
+  .text-success { color: var(--success); }
+  .text-danger { color: var(--danger); }
+  .text-accent { color: var(--accent); }
+</style>
+
+<script>
+  import type { Lead } from '../types';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiQualified = document.getElementById('kpi-qualified');
+    const kpiUnqualified = document.getElementById('kpi-unqualified');
+    const kpiRate = document.getElementById('kpi-rate');
+
+    document.addEventListener('lead-qualified', (e: Event) => {
+      const customEvent = e as CustomEvent<{ lead: Lead }>;
+      const { lead } = customEvent.detail;
+      if (kpiTotal && kpiQualified && kpiUnqualified && kpiRate) {
+        let currentTotal = parseInt(kpiTotal.textContent || '0') + 1;
+        let isQualified = lead.decision === 'Cualificado';
+        let currentQualified = parseInt(kpiQualified.textContent || '0') + (isQualified ? 1 : 0);
+        let currentUnqualified = parseInt(kpiUnqualified.textContent || '0') + (!isQualified ? 1 : 0);
+        let currentRate = Math.round((currentQualified / currentTotal) * 100);
+
+        animateNumber(kpiTotal, currentTotal);
+        animateNumber(kpiQualified, currentQualified);
+        animateNumber(kpiUnqualified, currentUnqualified);
+        kpiRate.textContent = `${currentRate}%`;
+      }
+    });
+
+    function animateNumber(element: HTMLElement, target: number) {
+      let current = parseInt(element.textContent || '0');
+      if (current === target) return;
+      
+      const step = target > current ? 1 : -1;
+      const duration = 400;
+      const intervalTime = Math.abs(duration / (target - current));
+      
+      const timer = setInterval(() => {
+        current += step;
+        element.textContent = current.toString();
+        if (current === target) {
+          clearInterval(timer);
+        }
+      }, Math.max(intervalTime, 15));
+    }
+  });
+</script>

@@ -1,0 +1,307 @@
+---
+---
+
+<section class="simulator-section glassmorphic">
+  <div class="section-header">
+    <h2>Simulador de Leads (Cerebras LLM)</h2>
+    <p>Escribe datos de un cliente potencial en texto libre para simular cómo el bot de Telegram lo cualifica.</p>
+  </div>
+
+  <form id="simulator-form" class="simulator-form">
+    <div class="textarea-wrapper">
+      <textarea 
+        id="lead-input" 
+        placeholder="Ejemplo: Empresa de consultoría de software, 12 empleados en Bogotá (Colombia), buscan implementar un flujo automatizado de captación de leads con IA."
+        required
+        rows="4"
+      ></textarea>
+      <div class="prompt-suggestions">
+        <span class="suggestion-tag" data-text="Agencia de marketing en Madrid, 8 empleados, buscan automatizar el envío de presupuestos.">Consultoría en Madrid (ICP OK)</span>
+        <span class="suggestion-tag" data-text="Panadería de barrio con 2 empleados en Sevilla, quieren comprar un horno nuevo.">Panadería (ICP Fail)</span>
+        <span class="suggestion-tag" data-text="Startup de tecnología en Miami (EEUU) con 40 empleados, buscan automatizar desarrollo.">Ubicación Miami (ICP Fail)</span>
+      </div>
+    </div>
+
+    <button type="submit" id="submit-btn" class="glow-button">
+      <span>Calificar con gpt-oss-120b</span>
+      <div class="spinner" id="btn-spinner" style="display: none;"></div>
+    </button>
+  </form>
+
+  <div id="result-box" class="result-box glassmorphic" style="display: none;">
+    <div class="result-header">
+      <h3>Resultado de Cualificación</h3>
+      <span id="result-badge" class="result-badge">Cualificado</span>
+    </div>
+    <div class="result-body">
+      <div class="reasoning-block">
+        <strong>Razonamiento de la IA:</strong>
+        <p id="result-reason">Analizando criterios...</p>
+      </div>
+      <div class="metadata-block">
+        <span>Procesado por: <b>gpt-oss-120b (Cerebras WSE)</b></span>
+        <span>Tiempo de Inferencia: <b>~0.07s</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .simulator-section {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .section-header h2 {
+    font-family: var(--font-title);
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem 0;
+  }
+  .section-header p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .simulator-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .textarea-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  textarea {
+    width: 100%;
+    background: rgba(9, 9, 11, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    resize: vertical;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    line-height: 1.5;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
+  }
+  .prompt-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .suggestion-tag {
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    padding: 0.3rem 0.7rem;
+    border-radius: 15px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .suggestion-tag:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.3);
+    color: var(--text-primary);
+  }
+
+  .glow-button {
+    position: relative;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    padding: 1rem;
+    font-family: var(--font-title);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .glow-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(139, 92, 246, 0.5);
+  }
+  .glow-button:active {
+    transform: translateY(1px);
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .result-box {
+    margin-top: 0.5rem;
+    padding: 1.25rem;
+    animation: fadeIn 0.4s ease-out;
+    border-left: 4px solid var(--primary);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .result-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .result-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+  }
+  .badge-qualified-large {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .badge-unqualified-large {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .reasoning-block {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 0.85rem;
+    margin-bottom: 0.85rem;
+  }
+  .reasoning-block strong {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .reasoning-block p {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .metadata-block {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+  }
+</style>
+
+<script>
+  import type { Lead } from '../types';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('simulator-form') as HTMLFormElement;
+    const input = document.getElementById('lead-input') as HTMLTextAreaElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const btnSpinner = document.getElementById('btn-spinner');
+    
+    const resultBox = document.getElementById('result-box');
+    const resultBadge = document.getElementById('result-badge');
+    const resultReason = document.getElementById('result-reason');
+
+    document.querySelectorAll('.suggestion-tag').forEach(tag => {
+      tag.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const promptText = target.getAttribute('data-text');
+        if (promptText && input) {
+          input.value = promptText;
+          input.focus();
+        }
+      });
+    });
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        submitBtn.disabled = true;
+        if (btnSpinner) btnSpinner.style.display = 'inline-block';
+        if (resultBox) resultBox.style.display = 'none';
+
+        try {
+          const response = await fetch('/api/test-lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al conectar con el servidor.');
+          }
+
+          const data = await response.json();
+          if (data.success && data.lead) {
+            const lead = data.lead as Lead;
+            
+            if (resultBox && resultBadge && resultReason) {
+              resultReason.textContent = lead.reason;
+              resultBadge.textContent = lead.decision;
+              
+              resultBadge.className = 'result-badge';
+              if (lead.decision === 'Cualificado') {
+                resultBadge.classList.add('badge-qualified-large');
+              } else {
+                resultBadge.classList.add('badge-unqualified-large');
+              }
+              
+              resultBox.style.display = 'block';
+            }
+
+            document.dispatchEvent(new CustomEvent('lead-qualified', {
+              detail: { lead }
+            }));
+
+            input.value = '';
+          } else {
+            alert('Error procesando lead: ' + (data.error || 'Desconocido'));
+          }
+        } catch (err) {
+          const error = err as Error;
+          console.error(error);
+          alert('Error en el simulador: ' + error.message);
+        } finally {
+          submitBtn.disabled = false;
+          if (btnSpinner) btnSpinner.style.display = 'none';
+        }
+      });
+    }
+  });
+</script>

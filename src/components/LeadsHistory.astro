@@ -1,0 +1,586 @@
+---
+import type { Lead } from '../types';
+
+interface Props {
+  leads: Lead[];
+}
+
+const { leads } = Astro.props;
+---
+
+<section class="history-section neumorphic-flat">
+  <div class="section-header-row">
+    <div class="section-header">
+      <h2>Historial de Leads</h2>
+      <p>Datos extraídos en tiempo real de Neon Database.</p>
+    </div>
+    <div class="search-wrapper neumorphic-inset">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="Buscar por texto, ubicación, estado..."
+        class="glass-input"
+      />
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+  </div>
+
+  <div class="table-container neumorphic-inset">
+    <table class="leads-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Datos del Lead</th>
+          <th>Veredicto</th>
+          <th>Razonamiento</th>
+          <th>Detalles</th>
+        </tr>
+      </thead>
+      <tbody id="leads-tbody">
+        {leads.length === 0 ? (
+          <tr class="empty-row">
+            <td colspan="6">No hay leads registrados aún. ¡Envía un mensaje por Telegram o usa el simulador!</td>
+          </tr>
+        ) : (
+          leads.map((lead) => {
+            const formattedDate = new Date(lead.created_at).toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            const userDisplay = `@${lead.username || 'simulador'}`;
+            return (
+              <tr class="lead-row" data-decision={lead.decision}>
+                <td class="col-date">{formattedDate}</td>
+                <td class="col-user">{userDisplay}</td>
+                <td class="col-text" title={lead.raw_text}>{lead.raw_text}</td>
+                <td class="col-decision">
+                  <span class={`badge ${lead.decision === 'Cualificado' ? 'badge-qualified' : 'badge-unqualified'}`}>
+                    {lead.decision}
+                  </span>
+                </td>
+                <td class="col-reason" title={lead.reason}>{lead.reason}</td>
+                <td class="col-actions">
+                  <button 
+                    class="details-btn neumorphic-flat" 
+                    data-date={formattedDate}
+                    data-user={userDisplay}
+                    data-text={lead.raw_text}
+                    data-decision={lead.decision}
+                    data-reason={lead.reason}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </td>
+              </tr>
+            );
+          })
+        )}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div id="details-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content neumorphic-flat">
+    <div class="modal-header">
+      <h2>Detalles Completos del Lead</h2>
+      <button id="close-modal-btn" class="close-btn neumorphic-flat">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-meta-row">
+        <div class="meta-item neumorphic-inset">
+          <strong>Fecha:</strong>
+          <span id="modal-date"></span>
+        </div>
+        <div class="meta-item neumorphic-inset">
+          <strong>Usuario:</strong>
+          <span id="modal-user"></span>
+        </div>
+        <div class="meta-item neumorphic-inset">
+          <strong>Veredicto:</strong>
+          <span id="modal-decision" class="badge"></span>
+        </div>
+      </div>
+      
+      <div class="modal-section">
+        <h3>Datos Originales del Lead</h3>
+        <div class="modal-text-box neumorphic-inset" id="modal-text"></div>
+      </div>
+
+      <div class="modal-section">
+        <h3>Razonamiento Comercial de la IA</h3>
+        <div class="modal-reason-box neumorphic-inset" id="modal-reason"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .history-section {
+    padding: 2.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    min-height: 500px;
+  }
+  .section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .section-header h2 {
+    font-family: var(--font-title);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem 0;
+    letter-spacing: -0.2px;
+  }
+  .section-header p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .search-wrapper {
+    position: relative;
+    width: 320px;
+    border-radius: 20px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+  }
+  @media (max-width: 600px) {
+    .search-wrapper {
+      width: 100%;
+    }
+  }
+  .glass-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    height: 100%;
+  }
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+  }
+
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    padding: 2px;
+  }
+  .leads-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+  .leads-table th {
+    background: rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.015);
+    padding: 1.1rem;
+    font-family: var(--font-title);
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+  }
+  .leads-table td {
+    padding: 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.01);
+    vertical-align: middle;
+  }
+  .lead-row {
+    transition: background-color 0.2s;
+  }
+  .lead-row:hover {
+    background: rgba(255, 255, 255, 0.01);
+  }
+  .lead-row:last-child td {
+    border-bottom: none;
+  }
+
+  .col-date {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .col-user {
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .col-text {
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+  }
+  .col-reason {
+    max-width: 360px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+  .col-actions {
+    text-align: center;
+    white-space: nowrap;
+    width: 60px;
+  }
+
+  .details-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    box-shadow: 
+      4px 4px 8px rgba(0, 0, 0, 0.6), 
+      -4px -4px 8px rgba(255, 255, 255, 0.02);
+  }
+  .details-btn:hover {
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 
+      6px 6px 12px rgba(0, 0, 0, 0.7), 
+      -5px -5px 12px rgba(255, 255, 255, 0.025);
+  }
+  .details-btn:active {
+    transform: translateY(0px);
+    box-shadow: 
+      inset 2px 2px 5px rgba(0, 0, 0, 0.75), 
+      inset -2px -2px 5px rgba(255, 255, 255, 0.02);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-qualified {
+    background: rgba(16, 185, 129, 0.06);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+  }
+  .badge-unqualified {
+    background: rgba(239, 68, 68, 0.06);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+  }
+
+  .empty-row td {
+    text-align: center;
+    padding: 3.5rem;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(9, 10, 12, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-content {
+    width: 90%;
+    max-width: 600px;
+    padding: 2.25rem;
+    position: relative;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    opacity: 0;
+    transform: scale(0.92) translateY(20px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .modal-overlay.active .modal-content {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.015);
+    padding-bottom: 1rem;
+  }
+  .modal-header h2 {
+    font-family: var(--font-title);
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+  }
+  .close-btn:hover {
+    color: var(--danger);
+  }
+
+  .modal-meta-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  .meta-item {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
+  .meta-item strong {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .modal-section h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .modal-text-box,
+  .modal-reason-box {
+    padding: 1.25rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .modal-text-box {
+    color: var(--text-primary);
+  }
+  .modal-reason-box {
+    color: var(--text-primary);
+    border-left: 4px solid var(--primary);
+  }
+</style>
+
+<script>
+  import type { Lead } from '../types';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const tbody = document.getElementById('leads-tbody');
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+
+    document.addEventListener('lead-qualified', (e: Event) => {
+      const customEvent = e as CustomEvent<{ lead: Lead }>;
+      const { lead } = customEvent.detail;
+      if (tbody) {
+        const emptyRow = tbody.querySelector('.empty-row');
+        if (emptyRow) {
+          emptyRow.remove();
+        }
+
+        const formattedDate = new Date(lead.created_at).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const badgeClass = lead.decision === 'Cualificado' ? 'badge-qualified' : 'badge-unqualified';
+
+        const newRow = document.createElement('tr');
+        newRow.className = 'lead-row';
+        newRow.style.opacity = '0';
+        newRow.style.transform = 'translateY(-10px)';
+        newRow.style.transition = 'all 0.4s ease-out';
+        newRow.setAttribute('data-decision', lead.decision);
+
+        newRow.innerHTML = `
+          <td class="col-date">${formattedDate}</td>
+          <td class="col-user">@simulador</td>
+          <td class="col-text" title="${escapeHtml(lead.raw_text)}">${escapeHtml(lead.raw_text)}</td>
+          <td class="col-decision">
+            <span class="badge ${badgeClass}">${lead.decision}</span>
+          </td>
+          <td class="col-reason" title="${escapeHtml(lead.reason)}">${escapeHtml(lead.reason)}</td>
+          <td class="col-actions">
+            <button 
+              class="details-btn neumorphic-flat" 
+              data-date="${formattedDate}"
+              data-user="@simulador"
+              data-text="${escapeHtml(lead.raw_text)}"
+              data-decision="${lead.decision}"
+              data-reason="${escapeHtml(lead.reason)}"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </td>
+        `;
+
+        tbody.insertBefore(newRow, tbody.firstChild);
+        
+        setTimeout(() => {
+          newRow.style.opacity = '1';
+          newRow.style.transform = 'translateY(0)';
+        }, 50);
+      }
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.lead-row');
+
+        rows.forEach(row => {
+          const dateCell = row.querySelector('.col-date')?.textContent?.toLowerCase() || '';
+          const userCell = row.querySelector('.col-user')?.textContent?.toLowerCase() || '';
+          const textCell = row.querySelector('.col-text')?.textContent?.toLowerCase() || '';
+          const decisionCell = row.querySelector('.col-decision')?.textContent?.toLowerCase() || '';
+          const reasonCell = row.querySelector('.col-reason')?.textContent?.toLowerCase() || '';
+
+          if (
+            dateCell.includes(query) || 
+            userCell.includes(query) || 
+            textCell.includes(query) || 
+            decisionCell.includes(query) || 
+            reasonCell.includes(query)
+          ) {
+            (row as HTMLElement).style.display = '';
+          } else {
+            (row as HTMLElement).style.display = 'none';
+          }
+        });
+      });
+    }
+
+    document.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      const btn = target.closest('.details-btn') as HTMLButtonElement | null;
+      if (btn) {
+        const date = btn.getAttribute('data-date') || '';
+        const user = btn.getAttribute('data-user') || '';
+        const text = btn.getAttribute('data-text') || '';
+        const decision = btn.getAttribute('data-decision') || '';
+        const reason = btn.getAttribute('data-reason') || '';
+
+        const modalDate = document.getElementById('modal-date');
+        const modalUser = document.getElementById('modal-user');
+        const modalDecision = document.getElementById('modal-decision');
+        const modalText = document.getElementById('modal-text');
+        const modalReason = document.getElementById('modal-reason');
+        const modal = document.getElementById('details-modal');
+
+        if (modalDate) modalDate.textContent = date;
+        if (modalUser) modalUser.textContent = user;
+        
+        if (modalDecision) {
+          modalDecision.textContent = decision;
+          modalDecision.className = `badge ${decision === 'Cualificado' ? 'badge-qualified' : 'badge-unqualified'}`;
+        }
+        
+        if (modalText) modalText.textContent = text;
+        if (modalReason) modalReason.textContent = reason;
+
+        if (modal) {
+          modal.style.display = 'flex';
+          void modal.offsetWidth;
+          modal.classList.add('active');
+        }
+      }
+    });
+
+    const closeModal = () => {
+      const modal = document.getElementById('details-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+          if (!modal.classList.contains('active')) {
+            modal.style.display = 'none';
+          }
+        }, 300);
+      }
+    };
+
+    document.getElementById('close-modal-btn')?.addEventListener('click', closeModal);
+    document.getElementById('details-modal')?.addEventListener('click', (e: Event) => {
+      if (e.target === e.currentTarget) {
+        closeModal();
+      }
+    });
+
+    function escapeHtml(text: string): string {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  });
+</script>
