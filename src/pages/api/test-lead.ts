@@ -54,51 +54,81 @@ La estructura del JSON debe ser exactamente:
 
     let qualified = false;
     let reason = "Error al calificar el lead.";
+    let isCached = false;
 
-    if (CEREBRAS_API_KEY) {
-      try {
-        const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${CEREBRAS_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: "gpt-oss-120b",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: text }
-            ],
-            temperature: 0
-          })
-        });
+    const normalizedText = text.trim();
+    interface CachedLead {
+      decision: string;
+      reason: string;
+    }
 
-        if (response.ok) {
-          const data = await response.json();
-          let rawContent = data.choices[0].message.content.trim();
-          
-          rawContent = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-          
-          try {
-            const parsed = JSON.parse(rawContent);
-            qualified = !!parsed.qualified;
-            reason = parsed.reason || "Sin justificación provista.";
-          } catch (jsonErr) {
-            console.error("Error parseando JSON en simulador:", jsonErr);
-            qualified = rawContent.toLowerCase().includes('"qualified": true') || rawContent.toLowerCase().includes('qualified":true');
-            reason = "La IA no devolvió un JSON perfecto, pero se parseó con fallback.";
-          }
-        } else {
-          const errorText = await response.text();
-          console.error("Error de Cerebras en simulador:", response.status, errorText);
-          reason = "Error de respuesta del LLM.";
-        }
-      } catch (err) {
-        console.error("Error de red al conectar con Cerebras en simulador:", err);
-        reason = "Error al conectar con la API de Cerebras.";
+    try {
+      const existingLeads = await sql`
+        SELECT decision, reason 
+        FROM leads 
+        WHERE TRIM(raw_text) = ${normalizedText} 
+        LIMIT 1
+      ` as CachedLead[];
+
+      if (existingLeads && existingLeads.length > 0) {
+        qualified = existingLeads[0].decision === 'Cualificado';
+        reason = existingLeads[0].reason;
+        isCached = true;
+        console.log(`Lead de simulación duplicado encontrado en Neon. Usando veredicto en cache: "${normalizedText}"`);
       }
-    } else {
-      reason = "API Key de Cerebras no configurada.";
+    } catch (dbErr) {
+      console.error("Error al consultar cache en Neon:", dbErr);
+    }
+
+    if (!isCached) {
+      if (CEREBRAS_API_KEY) {
+        try {
+          const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${CEREBRAS_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: "gpt-oss-120b",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: text }
+              ],
+              temperature: 0,
+              max_tokens: 250
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json() as {
+              choices: Array<{ message: { content: string } }>;
+            };
+            let rawContent = data.choices[0].message.content.trim();
+            
+            rawContent = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+            
+            try {
+              const parsed = JSON.parse(rawContent) as { qualified?: boolean; reason?: string };
+              qualified = !!parsed.qualified;
+              reason = parsed.reason || "Sin justificación provista.";
+            } catch (jsonErr) {
+              console.error("Error parseando JSON en simulador:", jsonErr);
+              qualified = rawContent.toLowerCase().includes('"qualified": true') || rawContent.toLowerCase().includes('qualified":true');
+              reason = "La IA no devolvió un JSON perfecto, pero se parseó con fallback.";
+            }
+          } else {
+            const errorText = await response.text();
+            console.error("Error de Cerebras en simulador:", response.status, errorText);
+            reason = "Error de respuesta del LLM.";
+          }
+        } catch (err) {
+          console.error("Error de red al conectar con Cerebras en simulador:", err);
+          reason = "Error al conectar con la API de Cerebras.";
+        }
+      } else {
+        reason = "API Key de Cerebras no configurada.";
+      }
     }
 
     const decisionText = qualified ? 'Cualificado' : 'No cualificado';

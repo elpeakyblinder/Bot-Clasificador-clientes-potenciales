@@ -20,16 +20,32 @@ function getEnv(key: string): string {
 
 export const POST: APIRoute = async (context) => {
   const TELEGRAM_BOT_TOKEN = getEnv('TELEGRAM_BOT_TOKEN');
+  const TELEGRAM_SECRET_TOKEN = getEnv('TELEGRAM_SECRET_TOKEN');
   const CEREBRAS_API_KEY = getEnv('CEREBRAS_API_KEY');
   const GOOGLE_SCRIPT_URL = getEnv('GOOGLE_SCRIPT_URL');
   const sql = getDb();
 
+  const secretHeader = context.request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+
+  if (TELEGRAM_SECRET_TOKEN && secretHeader !== TELEGRAM_SECRET_TOKEN) {
+    return new Response(JSON.stringify({ error: 'Acceso no autorizado.' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
-    const body = await context.request.json();
+    const body = await context.request.json() as {
+      message?: {
+        chat?: { id?: number };
+        text?: string;
+        from?: { username?: string; first_name?: string };
+      };
+    };
     
-    if (!body || !body.message) {
-      return new Response(JSON.stringify({ status: 'ignored', message: 'No message object found' }), {
-        status: 200,
+    if (!body || typeof body !== 'object' || !body.message) {
+      return new Response(JSON.stringify({ status: 'ignored', message: 'Estructura de mensaje no valida.' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -84,52 +100,82 @@ La estructura del JSON debe ser exactamente:
 
     let qualified = false;
     let reason = "Error al analizar el lead con el modelo de inteligencia artificial.";
+    let isCached = false;
 
-    if (CEREBRAS_API_KEY) {
-      try {
-        const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${CEREBRAS_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: "gpt-oss-120b",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: text }
-            ],
-            temperature: 0
-          })
-        });
+    const normalizedText = text.trim();
+    interface CachedLead {
+      decision: string;
+      reason: string;
+    }
 
-        if (response.ok) {
-          const data = await response.json();
-          let rawContent = data.choices[0].message.content.trim();
-          
-          rawContent = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-          
-          try {
-            const parsed = JSON.parse(rawContent);
-            qualified = !!parsed.qualified;
-            reason = parsed.reason || "Sin justificación provista.";
-          } catch (jsonErr) {
-            console.error("Error parseando JSON del LLM:", jsonErr, "Contenido crudo:", rawContent);
-            qualified = rawContent.toLowerCase().includes('"qualified": true') || rawContent.toLowerCase().includes('qualified":true');
-            reason = "El modelo no formateó correctamente la respuesta, pero fue procesada con fallback.";
-          }
-        } else {
-          const errorText = await response.text();
-          console.error("Error en API de Cerebras:", response.status, errorText);
-          reason = "La API del LLM experimentó un error temporal al procesar el mensaje.";
-        }
-      } catch (cerebrasErr) {
-        console.error("Error en llamada de fetch a Cerebras:", cerebrasErr);
-        reason = "Error interno al conectar con el motor de inteligencia artificial Cerebras.";
+    try {
+      const existingLeads = await sql`
+        SELECT decision, reason 
+        FROM leads 
+        WHERE TRIM(raw_text) = ${normalizedText} 
+        LIMIT 1
+      ` as CachedLead[];
+
+      if (existingLeads && existingLeads.length > 0) {
+        qualified = existingLeads[0].decision === 'Cualificado';
+        reason = existingLeads[0].reason;
+        isCached = true;
+        console.log(`Lead duplicado encontrado en Neon. Usando veredicto en cache: "${normalizedText}"`);
       }
-    } else {
-      console.warn("CEREBRAS_API_KEY no configurada.");
-      reason = "La API Key de Cerebras no está configurada en el servidor.";
+    } catch (dbErr) {
+      console.error("Error al consultar cache en Neon:", dbErr);
+    }
+
+    if (!isCached) {
+      if (CEREBRAS_API_KEY) {
+        try {
+          const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${CEREBRAS_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: "gpt-oss-120b",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: text }
+              ],
+              temperature: 0,
+              max_tokens: 250
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json() as {
+              choices: Array<{ message: { content: string } }>;
+            };
+            let rawContent = data.choices[0].message.content.trim();
+            
+            rawContent = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+            
+            try {
+              const parsed = JSON.parse(rawContent) as { qualified?: boolean; reason?: string };
+              qualified = !!parsed.qualified;
+              reason = parsed.reason || "Sin justificación provista.";
+            } catch (jsonErr) {
+              console.error("Error parseando JSON del LLM:", jsonErr, "Contenido crudo:", rawContent);
+              qualified = rawContent.toLowerCase().includes('"qualified": true') || rawContent.toLowerCase().includes('qualified":true');
+              reason = "El modelo no formateó correctamente la respuesta, pero fue procesada con fallback.";
+            }
+          } else {
+            const errorText = await response.text();
+            console.error("Error en API de Cerebras:", response.status, errorText);
+            reason = "La API del LLM experimentó un error temporal al procesar el mensaje.";
+          }
+        } catch (cerebrasErr) {
+          console.error("Error en llamada de fetch a Cerebras:", cerebrasErr);
+          reason = "Error interno al conectar con el motor de inteligencia artificial Cerebras.";
+        }
+      } else {
+        console.warn("CEREBRAS_API_KEY no configurada.");
+        reason = "La API Key de Cerebras no está configurada en el servidor.";
+      }
     }
 
     const decisionText = qualified ? 'Cualificado' : 'No cualificado';
