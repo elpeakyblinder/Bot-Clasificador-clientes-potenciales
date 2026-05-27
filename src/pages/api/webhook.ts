@@ -81,6 +81,23 @@ export const POST: APIRoute = async (context) => {
       return new Response(JSON.stringify({ status: 'ok', message: 'Start command processed' }), { status: 200 });
     }
 
+    const lowerText = text.toLowerCase().trim();
+    const saludos = ['hola', 'buenas', 'buenas tardes', 'buenos dias', 'buenos días', 'que tal', 'qué tal', 'hi', 'hello', 'test', 'saludos', 'hola bot', 'hola agente', 'hola!'];
+
+    if (saludos.includes(lowerText) || lowerText.length < 6) {
+      if (chatId && TELEGRAM_BOT_TOKEN) {
+        await sendTelegramMessage(
+          TELEGRAM_BOT_TOKEN,
+          chatId,
+          "👋 ¡Hola! Para poder calificar un lead, por favor envíame su información técnica o comercial (ej: tipo de empresa, tamaño, ubicación e interés en automatizaciones/IA). 😊"
+        );
+      }
+      return new Response(JSON.stringify({ status: 'ok', message: 'Greeting message handled without LLM' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     console.log(`Procesando lead enviado por ${username}: "${text}"`);
     
     const systemPrompt = `Eres un agente experto en cualificación de leads comerciales. Tu tarea es analizar los datos de un lead proporcionados en texto libre y decidir si encaja con nuestro Perfil de Cliente Ideal (ICP).
@@ -189,7 +206,20 @@ La estructura del JSON debe ser exactamente:
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, telegramResponse);
     }
 
+    const isUninformative = !qualified && (
+      reason.toLowerCase().includes('no se proporcionaron') ||
+      reason.toLowerCase().includes('falta información') ||
+      reason.toLowerCase().includes('falta de información') ||
+      reason.toLowerCase().includes('no contiene') ||
+      reason.toLowerCase().includes('no provee') ||
+      reason.toLowerCase().includes('información insuficiente')
+    );
+
     const dbPromise = (async () => {
+      if (isUninformative) {
+        console.log("Lead sin informacion relevante detectado. Omitiendo guardado en Neon Database.");
+        return;
+      }
       try {
         await sql`
           INSERT INTO leads (raw_text, decision, reason, username, chat_id)
@@ -202,6 +232,10 @@ La estructura del JSON debe ser exactamente:
     })();
 
     const sheetsPromise = (async () => {
+      if (isUninformative) {
+        console.log("Lead sin informacion relevante detectado. Omitiendo guardado en Google Sheets.");
+        return;
+      }
       if (GOOGLE_SCRIPT_URL) {
         try {
           const res = await fetch(GOOGLE_SCRIPT_URL, {
